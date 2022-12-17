@@ -93,8 +93,7 @@ class DictSource(Source):
         for key in parents:
             d = d[key]
 
-        val = d.get(setting.name, NotFound)
-        return val
+        return d.get(setting.name, NotFound)
 
 
 class FileSource(Source):

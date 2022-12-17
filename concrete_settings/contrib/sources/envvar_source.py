@@ -16,17 +16,11 @@ class EnvVarSource(StringSourceMixin, Source):
 
     @staticmethod
     def get_source(src: AnySource) -> Optional['EnvVarSource']:
-        if isinstance(src, EnvVarSource):
-            return src
-        else:
-            return None
+        return src if isinstance(src, EnvVarSource) else None
 
     def read(self, setting, parents: Tuple[str, ...] = ()) -> Union[Type[NotFound], Any]:
         parents_upper = map(str.upper, parents)
         key = '_'.join((*parents_upper, setting.name))
         val = os.environ.get(key)
 
-        if val is None:
-            return NotFound
-        else:
-            return self.convert_value(val, setting.type_hint)
+        return NotFound if val is None else self.convert_value(val, setting.type_hint)

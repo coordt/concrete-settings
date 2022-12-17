@@ -18,27 +18,25 @@ class GenericBehaviorMeta(type):
         # Act as a decorator
         _decorating_setting_or_method = (
             len(args) == 1
-            and len(kwargs) == 0
+            and not kwargs
             and isinstance(args[0], (Setting, types.FunctionType))
         )
 
-        if _decorating_setting_or_method:
-            if isinstance(args[0], types.FunctionType):
-                setting = PropertySetting(args[0])
-            else:
-                setting = args[0]
+        if not _decorating_setting_or_method:
+            return super().__call__(*args, **kwargs)
+        setting = (
+            PropertySetting(args[0])
+            if isinstance(args[0], types.FunctionType)
+            else args[0]
+        )
+        bhv = super().__call__()
+        return bhv(setting)
 
-            bhv = super().__call__()
-            return bhv(setting)
-        else:
-            bhv = super().__call__(*args, **kwargs)
-            return bhv
-
-    def __rmatmul__(cls, setting: Any):
+    def __rmatmul__(self, setting: Any):
         if not isinstance(setting, Setting):
             setting = Setting(setting)
 
-        bhv = cls()
+        bhv = self()
         return bhv(setting)
 
 

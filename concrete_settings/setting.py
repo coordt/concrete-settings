@@ -43,11 +43,7 @@ class Setting:
         self, owner: Optional['Settings'], owner_type=None
     ) -> Union[Any, 'Setting']:
         # == class-level access ==
-        if not owner:
-            return self
-
-        # == object-level access ==
-        return self.get_value(owner)
+        return self.get_value(owner) if owner else self
 
     def get_value(self, owner):
         return getattr(owner, f"__setting_{self.name}_value", self.value)
@@ -62,7 +58,7 @@ class Setting:
 class PropertySetting(Setting):
     def __init__(self, *args, **kwargs):
         decorating_without_arguments = (
-            len(args) == 1 and len(kwargs) == 0 and callable(args[0])
+            len(args) == 1 and not kwargs and callable(args[0])
         )
         if decorating_without_arguments:
             self._init_decorator_without_arguments(args[0])

@@ -58,6 +58,9 @@ def test_setting_set(v_int):
 
 
 def test_guessed_type():
+
+
+
     class TestSettings(Settings):
         # Numeric types
         BOOLEAN = True
@@ -66,7 +69,7 @@ def test_guessed_type():
         COMPLEX = 10 + 10j
 
         # Sequences
-        LIST = list()
+        LIST = []
         TUPLE = tuple()
         RANGE = range(3)
 
@@ -77,7 +80,8 @@ def test_guessed_type():
         # set, frozenset, dict
         SET = set()
         FROZENSET = frozenset()
-        DICT = dict()
+        DICT = {}
+
 
     d = TestSettings.__dict__
     assert d["BOOLEAN"].type_hint is bool

@@ -24,8 +24,7 @@ class JsonSource(FileSource):
         for key in parents:
             d = d[key]
 
-        val = d.get(setting.name, NotFound)
-        return val
+        return d.get(setting.name, NotFound)
 
     @staticmethod
     def _read_file(path):

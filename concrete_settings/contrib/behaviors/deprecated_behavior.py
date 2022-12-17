@@ -32,15 +32,13 @@ class deprecated(GetterSetterBehavior):
         super().decorate(setting)
 
     def get_value(self, setting: 'Setting', owner: 'Settings') -> Any:
-        if self.warn_on_get:
-            if owner and not owner.is_being_validated:
-                msg = self.deprecation_message.format(owner=owner, name=setting.name)
-                warnings.warn(msg, DeprecationWarning)
+        if self.warn_on_get and owner and not owner.is_being_validated:
+            msg = self.deprecation_message.format(owner=owner, name=setting.name)
+            warnings.warn(msg, DeprecationWarning)
         return super().get_value(setting, owner)
 
     def set_value(self, setting: 'Setting', owner: 'Settings', value):
-        if self.warn_on_set:
-            if not owner.is_being_validated:
-                msg = self.deprecation_message.format(owner=owner, name=setting.name)
-                warnings.warn(msg, DeprecationWarning)
+        if self.warn_on_set and not owner.is_being_validated:
+            msg = self.deprecation_message.format(owner=owner, name=setting.name)
+            warnings.warn(msg, DeprecationWarning)
         super().set_value(setting, owner, value)

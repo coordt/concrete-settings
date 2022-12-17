@@ -27,13 +27,13 @@ INVALID_SETTINGS = '__invalid__settings__'
 
 
 class SettingsMeta(type):
-    def __new__(mcs, name, bases, class_dict):
-        new_dict = mcs.class_dict_to_settings(class_dict, bases)
-        mcs.add_settings_help(name, new_dict)
-        return super().__new__(mcs, name, bases, new_dict)
+    def __new__(cls, name, bases, class_dict):
+        new_dict = cls.class_dict_to_settings(class_dict, bases)
+        cls.add_settings_help(name, new_dict)
+        return super().__new__(cls, name, bases, new_dict)
 
     @classmethod
-    def class_dict_to_settings(mcs, class_dict: dict, bases: List[type]):
+    def class_dict_to_settings(cls, class_dict: dict, bases: List[type]):
         new_dict = {}
         annotations = class_dict.get("__annotations__", {})
 
@@ -44,18 +44,16 @@ class SettingsMeta(type):
             # Make a Setting out of each UPPERCASE_ATTRIBUTE
             if (
                 not attr_is_setting
-                and mcs._is_setting_name(name)
-                and mcs._can_be_converted_to_setting_automatically(attr)
+                and cls._is_setting_name(name)
+                and cls._can_be_converted_to_setting_automatically(attr)
             ):
-                new_attr = mcs._make_setting_from_attribute(name, attr, annotations)
+                new_attr = cls._make_setting_from_attribute(name, attr, annotations)
 
             new_attr_is_setting = isinstance(new_attr, Setting)
 
             # Should we guess a type_hint for the Setting?
             if new_attr_is_setting and new_attr.type_hint is GuessSettingType:
-                new_attr.type_hint = mcs._guess_type_hint(
-                    name, new_attr, annotations, bases
-                )
+                new_attr.type_hint = cls._guess_type_hint(name, new_attr, annotations, bases)
 
             # If the Setting was created from an implicit definition (without behaviors!)
             # should we then try substituting the setting type with a one
@@ -65,23 +63,20 @@ class SettingsMeta(type):
                     new_attr.type_hint
                 )
                 if setting_class_from_registry is not Setting:
-                    new_attr = mcs._substitute_by_setting_class_from_registry(
-                        new_attr,
-                        setting_class_from_registry
+                    new_attr = cls._substitute_by_setting_class_from_registry(
+                        new_attr, setting_class_from_registry
                     )
 
             # Final touch: apply behaviors
             if new_attr_is_setting:
-                mcs._apply_behaviors(new_attr)
+                cls._apply_behaviors(new_attr)
 
             new_dict[name] = new_attr
 
         return new_dict
 
     @classmethod
-    def _make_setting_from_attribute(
-        mcs, name, attr, annotations
-    ) -> Union[PropertySetting, Setting]:
+    def _make_setting_from_attribute(cls, name, attr, annotations) -> Union[PropertySetting, Setting]:
         # is it a class method?
         if isinstance(attr, types.FunctionType):
             return PropertySetting(attr)
@@ -93,7 +88,7 @@ class SettingsMeta(type):
         return setting_class_from_registry(attr, doc="", type_hint=type_hint)
 
     @classmethod
-    def _guess_type_hint(mcs, name, setting: Setting, annotations, bases: List[type]):
+    def _guess_type_hint(cls, name, setting: Setting, annotations, bases: List[type]):
         # we still have to check annotations,
         # e.g. if the setting was instantiated by behavior
         annotation_type_hint = annotations.get(name, GuessSettingType)
@@ -103,28 +98,26 @@ class SettingsMeta(type):
         # try to get the type hint from the base classes
         for base in bases:
             try:
-                base_type_hint = getattr(base, name).type_hint
-                return base_type_hint
+                return getattr(base, name).type_hint
             except AttributeError:
                 pass
 
-        guessed_setting_type = GuessSettingType.guess_type_hint(setting.value)
-        return guessed_setting_type
+        return GuessSettingType.guess_type_hint(setting.value)
 
     @classmethod
-    def _is_setting_name(mcs, name: str) -> bool:
+    def _is_setting_name(cls, name: str) -> bool:
         """Return True if name is written in the upper case"""
         return not name.startswith('_') and name.upper() == name
 
     @classmethod
-    def _can_be_converted_to_setting_automatically(mcs, attr: Any) -> bool:
+    def _can_be_converted_to_setting_automatically(cls, attr: Any) -> bool:
         """Return False if attribute should not be converted
            to a Setting automatically"""
         callable_types = (property, classmethod, staticmethod)
         return not isinstance(attr, callable_types)
 
     @classmethod
-    def add_settings_help(mcs, cls_name: str, class_dict: dict):
+    def add_settings_help(cls, cls_name: str, class_dict: dict):
         if '__module__' not in class_dict:
             # class is not coming from a module
             return
@@ -161,11 +154,7 @@ class SettingsMeta(type):
                 pass
 
     @classmethod
-    def _substitute_by_setting_class_from_registry(
-        mcs,
-        setting: Setting,
-        substitue_setting_type: Type[Setting]
-    ):
+    def _substitute_by_setting_class_from_registry(cls, setting: Setting, substitue_setting_type: Type[Setting]):
         new_setting = substitue_setting_type(
             setting.value,
             doc=setting.__doc__,
@@ -178,7 +167,7 @@ class SettingsMeta(type):
         return new_setting
 
     @classmethod
-    def _apply_behaviors(mcs, setting: Setting):
+    def _apply_behaviors(cls, setting: Setting):
         for behavior in setting._behaviors:
             behavior.decorate(setting)
 
@@ -212,8 +201,7 @@ class Settings(Setting, metaclass=SettingsMeta):
                 # start with setting object of the first classes
                 s0 = c0.__dict__[name]
                 s1 = c1.__dict__[name]
-                differences = self._settings_diff(s0, s1)
-                if differences:
+                if differences := self._settings_diff(s0, s1):
                     diff = '; '.join(differences)
                     raise StructureError(
                         f'in classes {c0} and {c1} setting {name} has'
@@ -238,13 +226,11 @@ class Settings(Setting, metaclass=SettingsMeta):
         return dict(settings_classes)
 
     def _settings_diff(self, s0: Setting, s1: Setting) -> List[str]:
-        NO_DIFF = []  # type: ignore
         differences = []
 
         # No checks are performed if setting is overridden
         if s1.override:
-            return NO_DIFF
-
+            return []
         if not type_hints_equal(s0.type_hint, s1.type_hint):
             differences.append(f'types differ: {s0.type_hint} != {s1.type_hint}')
 
@@ -268,11 +254,12 @@ class Settings(Setting, metaclass=SettingsMeta):
 
         # validate each setting individually
         for name, setting in self.settings_attributes():
-            setting_errors = self._validate_setting(name, setting, raise_exception)
-            if setting_errors:
+            if setting_errors := self._validate_setting(
+                name, setting, raise_exception
+            ):
                 errors[name] = setting_errors
 
-        if errors == {}:
+        if not errors:
             try:
                 self.validate()
             except ValidationError as e:
@@ -367,7 +354,7 @@ class Settings(Setting, metaclass=SettingsMeta):
 
     def extract_to(self, destination: Union[types.ModuleType, dict], prefix: str = ''):
         if prefix != '':
-            prefix = prefix + '_'
+            prefix += '_'
 
         if isinstance(destination, types.ModuleType):
             destination = destination.__dict__

@@ -37,10 +37,7 @@ class GuessSettingType:
         if val is Undefined:
             return Any
 
-        for t in cls.KNOWN_TYPES:
-            if isinstance(val, t):
-                return t
-        return Any
+        return next((t for t in cls.KNOWN_TYPES if isinstance(val, t)), Any)
 
 
 def type_hints_equal(hint1, hint2):
